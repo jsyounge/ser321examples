@@ -239,32 +239,41 @@ class WebServer {
           //     then drill down to what you care about
           // "Owner's repo is named RepoName. Example: find RepoName's contributors" translates to
           //     "/repos/OWNERNAME/REPONAME/contributors"
-
-          Map<String, String> query_pairs = new LinkedHashMap<String, String>();
-          query_pairs = splitQuery(request.replace("github?", ""));
-          String json = fetchURL("https://api.github.com/" + query_pairs.get("query"));
-          System.out.println(json);
-          JSONArray repoArr = new JSONArray(json);
-          builder.append("HTTP/1.1 200 OK\n");
-          builder.append("Content-Type: application/json; charset=utf-8\n");
-          builder.append("\n");
-
-          for(int i = 0; i < repoArr.length(); i++) {
-            JSONObject repo = repoArr.getJSONObject(i);
-            String repoName = repo.getString("name");
-
-            JSONObject owner = repo.getJSONObject("owner");
-            String ownerName = owner.getString("login");
-            int ownerID = owner.getInt("id");
-
-            JSONObject newArr = new JSONObject();
-            newArr.put("name", repoName);
-            newArr.put("owner", ownerName);
-            newArr.put("id", ownerID);
-            builder.append(newArr);
+          try {
+            Map<String, String> query_pairs = new LinkedHashMap<String, String>();
+            query_pairs = splitQuery(request.replace("github?", ""));
+            String json = fetchURL("https://api.github.com/" + query_pairs.get("query"));
+            System.out.println(json);
+            JSONArray repoArr = new JSONArray(json);
+            builder.append("HTTP/1.1 200 OK\n");
+            builder.append("Content-Type: application/json; charset=utf-8\n");
             builder.append("\n");
-          }
 
+            for (int i = 0; i < repoArr.length(); i++) {
+              JSONObject repo = repoArr.getJSONObject(i);
+              String repoName = repo.getString("name");
+
+              JSONObject owner = repo.getJSONObject("owner");
+              String ownerName = owner.getString("login");
+              int ownerID = owner.getInt("id");
+
+              JSONObject newArr = new JSONObject();
+              newArr.put("name", repoName);
+              newArr.put("owner", ownerName);
+              newArr.put("id", ownerID);
+              builder.append(newArr);
+              builder.append("\n");
+            }
+          } catch {
+            (Exception e) {
+              builder.append("HTTP/1.1 400 Bad Request\n");
+              builder.append("Content-Type: text/html; charset=utf-8\n");
+              builder.append("\n");
+              builder.append("Incorrect format.");
+              builder.append("\n");
+              builder.append("Format: /repos/OWNERNAME/REPONAME/contributor");
+            }
+          }
           //builder.append("Check the todos mentioned in the Java source file");
 
 
