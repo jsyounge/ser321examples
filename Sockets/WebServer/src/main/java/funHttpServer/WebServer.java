@@ -8,7 +8,6 @@ You can also do some other simple GET requests:
 4) /multiply?num1=3&num2=4 multiplies the two inputs and responses with the result
 5) /github?query=users/amehlhase316/repos (or other GitHub repo owners) will lead to receiving
    JSON which will for now only be printed in the console. See the todo below
-
 The reading of the request is done "manually", meaning no library that helps making things a 
 little easier is used. This is done so you see exactly how to pars the request and 
 write a response back
@@ -25,10 +24,12 @@ import java.util.Random;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.nio.charset.Charset;
+import org.json.*;
+
 
 class WebServer {
   public static void main(String args[]) {
-    WebServer server = new WebServer(9000);
+    WebServer server = new WebServer(8888);
   }
 
   /**
@@ -146,7 +147,6 @@ class WebServer {
 
         } else if (request.equalsIgnoreCase("json")) {
           // shows the JSON of a random image and sets the header name for that image
-
           // pick a index from the map
           int index = random.nextInt(_images.size());
 
@@ -200,22 +200,35 @@ class WebServer {
           Map<String, String> query_pairs = new LinkedHashMap<String, String>();
           // extract path parameters
           query_pairs = splitQuery(request.replace("multiply?", ""));
+          if(query_pairs.size() == 2) {
 
-          // extract required fields from parameters
-          Integer num1 = Integer.parseInt(query_pairs.get("num1"));
-          Integer num2 = Integer.parseInt(query_pairs.get("num2"));
+            try {
+              Integer num1 = Integer.parseInt(query_pairs.get("num1"));
+              Integer num2 = Integer.parseInt(query_pairs.get("num2"));
 
-          // do math
-          Integer result = num1 * num2;
+              // do math
+              Integer result = num1 * num2;
 
-          // Generate response
-          builder.append("HTTP/1.1 200 OK\n");
-          builder.append("Content-Type: text/html; charset=utf-8\n");
-          builder.append("\n");
-          builder.append("Result is: " + result);
+              // Generate response
+              builder.append("HTTP/1.1 200 OK\n");
+              builder.append("Content-Type: text/html; charset=utf-8\n");
+              builder.append("\n");
+              builder.append("Result is: " + result);
+            } catch (Exception e) {
+              builder.append("HTTP/1.1 400 Bad Request\n");
+              builder.append("Content-Type: text/html; charset=utf-8\n");
+              builder.append("\n");
+              builder.append("Both query parameters should be integers");
+            }
+            // extract required fields from parameters
 
-          // TODO: Include error handling here with a correct error code and
-          // a response that makes sense
+          } else {
+            builder.append("HTTP/1.1 400 Bad Request\n");
+            builder.append("Content-Type: text/html; charset=utf-8\n");
+            builder.append("\n");
+            builder.append("Insufficient query amount, there should 2 numbers");
+          }
+
 
         } else if (request.contains("github?")) {
           // pulls the query from the request and runs it with GitHub's REST API
@@ -230,8 +243,30 @@ class WebServer {
           query_pairs = splitQuery(request.replace("github?", ""));
           String json = fetchURL("https://api.github.com/" + query_pairs.get("query"));
           System.out.println(json);
+          JSONArray repoArr = new JSONArray(json);
+          builder.append("HTTP/1.1 200 OK\n");
+          builder.append("Content-Type: application/json; charset=utf-8\n");
+          builder.append("\n");
 
-          builder.append("Check the todos mentioned in the Java source file");
+          for(int i = 0; i < repoArr.length(); i++) {
+            JSONObject repo = repoArr.getJSONObject(i);
+            String repoName = repo.getString("name");
+
+            JSONObject owner = repo.getJSONObject("owner");
+            String ownerName = owner.getString("login");
+            int ownerID = owner.getInt("id");
+
+            JSONObject newArr = new JSONObject();
+            newArr.put("name", repoName);
+            newArr.put("owner", ownerName);
+            newArr.put("id", ownerID);
+            builder.append(newArr);
+            builder.append("\n");
+          }
+
+          //builder.append("Check the todos mentioned in the Java source file");
+
+
           // TODO: Parse the JSON returned by your fetch and create an appropriate
           // response
           // and list the owner name, owner id and name of the public repo on your webpage, e.g.
@@ -363,4 +398,3 @@ class WebServer {
     }
     return sb.toString();
   }
-}
